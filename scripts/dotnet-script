@@ -1,0 +1,5 @@
+#!/bin/bash
+RAW_WINDOWS_USER_PATH="$(wslpath $(powershell.exe -NoProfile -NonInteractive -Command "\$Env:UserProfile"))"
+WINDOWS_USER_PATH="${RAW_WINDOWS_USER_PATH//$'\r'}"
+DOTNET_TOOL_PATH="$WINDOWS_USER_PATH/.dotnet/tools"
+"$DOTNET_TOOL_PATH/dotnet-script.exe" "$@"

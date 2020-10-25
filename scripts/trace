@@ -1,0 +1,20 @@
+#! /bin/bash
+
+. ./scripts/win-tools.sh
+
+dotnet-trace() {
+  $dotnet_tools/dotnet-trace.exe "$@"
+}
+
+pid=''
+while [ -z "$pid" ]; do
+  pid="$( \
+    dotnet-trace ps | \
+    sed -nE 's#^ +([0-9]+) +$1 .*#\1#p' \
+  )"
+done
+echo "[$pid] started"
+
+dotnet-trace collect -p "$pid" "$@"
+
+/mnt/c/tools/PerfView/PerfView64.exe "$(winpath ./trace.nettrace)"
