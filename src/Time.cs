@@ -28,6 +28,10 @@ public static class Time {
     return (float)stopwatch.Elapsed.TotalSeconds;
   }
 
+  public static void Yield() {
+    System.Threading.Thread.Yield();
+  }
+
   public static float Sleep(float duration) {
     var start = Now();
     var end = start + duration;

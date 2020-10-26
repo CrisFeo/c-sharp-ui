@@ -6,7 +6,7 @@ public static class Program {
     try {
       Minesweeper.Play(20, 0.15f);
     } catch (Exception e) {
-      throw e;
+      Console.WriteLine(e);
     }
   }
 

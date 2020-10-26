@@ -40,24 +40,16 @@ public static class Minesweeper {
       });
       var nextTick = Time.Now() + TICK_INTERVAL;
       var isRunning = true;
-      while(isRunning) {
-        if (Terminal.ReadKey(out var key)) {
-          switch(key.Key) {
-            case ConsoleKey.H: store.Dispatch(new Event.Move{ x = -1, y =  0 }); break;
-            case ConsoleKey.J: store.Dispatch(new Event.Move{ x =  0, y =  1 }); break;
-            case ConsoleKey.K: store.Dispatch(new Event.Move{ x =  0, y = -1 }); break;
-            case ConsoleKey.L: store.Dispatch(new Event.Move{ x =  1, y =  0 }); break;
-            case ConsoleKey.Z: store.Dispatch(new Event.Check()); break;
-            case ConsoleKey.X: store.Dispatch(new Event.Flag()); break;
-            case ConsoleKey.S: store.Dispatch(new Event.NewGame()); break;
-            case ConsoleKey.Q: isRunning = false; break;
-          }
-        }
+      while (isRunning) {
         if (Time.Now() >= nextTick) {
           store.Dispatch(new Event.Tick());
           nextTick = Time.Now() + TICK_INTERVAL;
         }
+        if (Terminal.ReadKey(out var info)) {
+          isRunning = Input(store.Dispatch, info.Key);
+        }
         store.Process();
+        Time.Yield();
       }
     }
   }
@@ -96,6 +88,20 @@ public static class Minesweeper {
 
   // Internal methods
   ////////////////////
+
+  static bool Input(Action<Event> dispatch, ConsoleKey key) {
+    switch(key) {
+      case ConsoleKey.H: dispatch(new Event.Move{ x = -1, y =  0 }); break;
+      case ConsoleKey.J: dispatch(new Event.Move{ x =  0, y =  1 }); break;
+      case ConsoleKey.K: dispatch(new Event.Move{ x =  0, y = -1 }); break;
+      case ConsoleKey.L: dispatch(new Event.Move{ x =  1, y =  0 }); break;
+      case ConsoleKey.Z: dispatch(new Event.Check()); break;
+      case ConsoleKey.X: dispatch(new Event.Flag()); break;
+      case ConsoleKey.S: dispatch(new Event.NewGame()); break;
+      case ConsoleKey.Q: return false;
+    }
+    return true;
+  }
 
   static State Step(Config config, Event evt, State state) {
     switch(evt) {
