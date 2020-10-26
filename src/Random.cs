@@ -14,23 +14,18 @@ public static class Random {
   // Structs
   ////////////////////
 
-  public struct State {
-    public int seed;
-  }
+  public record State (int seed);
 
   // Public methods
   ////////////////////
 
-  public static State New(int seed) {
-    return new State { seed = seed };
-  }
-
   public static float Next(this State current, out State next) {
     var hi = current.seed / Q;
     var lo = current.seed % Q;
-    next.seed = (A * lo) - (R * hi);
-    if (next.seed <= 0) next.seed = next.seed + M;
-    return (next.seed * 1f) / M;
+    var seed = (A * lo) - (R * hi);
+    if (seed <= 0) seed = seed + M;
+    next = new State(seed);
+    return (seed * 1f) / M;
   }
 
 }

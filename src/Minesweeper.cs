@@ -21,10 +21,12 @@ public static class Minesweeper {
         mineChance = mineChance,
       };
       var initialState = new State {
-        random = Random.New(12),
+        random = new Random.State(12),
         tick = 0,
         isPlaying = false,
-        cells = new Cell[config.size * config.size].ToImmutableList(),
+        cells = new Cell[config.size * config.size]
+          .ToImmutableList()
+          .ConvertAll(c => new Cell{}),
         x = 0,
         y = 0,
       };
@@ -57,25 +59,25 @@ public static class Minesweeper {
   // Structs
   ////////////////////
 
-  struct Config {
-    public int size;
-    public float mineChance;
+  record Config {
+    public int size         {get; init; }
+    public float mineChance {get; init; }
   }
 
-  struct State {
-    public Random.State random;
-    public int tick;
-    public bool isPlaying;
-    public ImmutableList<Cell> cells;
-    public int x;
-    public int y;
+  record State {
+    public Random.State random       { get; init; }
+    public int tick                  { get; init; }
+    public bool isPlaying            { get; init; }
+    public ImmutableList<Cell> cells { get; init; }
+    public int x                     { get; init; }
+    public int y                     { get; init; }
   }
 
-  struct Cell {
-    public int count;
-    public bool isMine;
-    public bool isRevealed;
-    public bool isFlagged;
+  record Cell {
+    public int count       { get; init; }
+    public bool isMine     { get; init; }
+    public bool isRevealed { get; init; }
+    public bool isFlagged  { get; init; }
   }
 
   class Event {
@@ -106,58 +108,63 @@ public static class Minesweeper {
   static State Step(Config config, Event evt, State state) {
     switch(evt) {
       case Event.Tick e: {
-        state.tick++;
+        state = state with { tick = state.tick + 1 };
         break;
       }
       case Event.NewGame e: {
+        if (state.isPlaying) break;
+        var random = state.random;
         var cells = new List<Cell>(config.size * config.size);
         for (var i = 0; i < config.size * config.size; i++) {
           cells.Add(new Cell {
-            isMine = state.random.Next(out state.random) < config.mineChance,
+            isMine = random.Next(out random) < config.mineChance,
             isRevealed = false,
             isFlagged = false,
           });
         }
         for (var i = 0; i < config.size * config.size; i++) {
-          var c = cells[i];
+          var count = 0;
           foreach (var ni in Neighbors(config.size, i)) {
-            if (cells[ni].isMine) c.count++;
+            if (cells[ni].isMine) count++;
           }
-          cells[i] = c;
+          cells[i] = cells[i] with { count = count };
         }
-        state.isPlaying = true;
-        state.cells = cells.ToImmutableList();
-        state.x = (int)(config.size / 2);
-        state.y = (int)(config.size / 2);
+        state = state with {
+          random = random,
+          isPlaying = true,
+          cells = cells.ToImmutableList(),
+          x = (int)(config.size / 2),
+          y = (int)(config.size / 2),
+        };
         break;
       }
       case Event.Move e: {
         if (!state.isPlaying) break;
-        state.x = Clamp(0, config.size - 1, state.x + e.x);
-        state.y = Clamp(0, config.size - 1, state.y + e.y);
+        state = state with {
+          x = Clamp(0, config.size - 1, state.x + e.x),
+          y = Clamp(0, config.size - 1, state.y + e.y),
+        };
         break;
       }
       case Event.Check e: {
         if (!state.isPlaying) break;
-        var i = state.x + state.y * config.size;
-        var cell = state.cells[i];
+        var cursorIndex = state.x + state.y * config.size;
+        var cell = state.cells[cursorIndex];
         if (!cell.isFlagged) {
+          var cells = state.cells.ToBuilder();
           if (cell.isMine) {
-            state.cells = state.cells.ConvertAll(c => {
-              c.isRevealed = true;
-              return c;
-            });
+            for (var i = 0; i < cells.Count; i++) {
+              cells[i] = cells[i] with { isRevealed = true };
+            }
           } else {
-            var cells = state.cells.ToBuilder();
             var front = new HashSet<int>();
             var visited = new HashSet<int>();
-            front.Add(i);
+            front.Add(cursorIndex);
             while (front.Count != 0) {
               var ci = front.First();
               front.Remove(ci);
               visited.Add(ci);
-              var c = cells[ci];
-              c.isRevealed = true;
+              var c = cells[ci] with { isRevealed = true };
               cells[ci] = c;
               if (c.count == 0) {
                 foreach (var ni in Neighbors(config.size, ci)) {
@@ -165,20 +172,21 @@ public static class Minesweeper {
                 }
               }
             }
-            state.cells = cells.ToImmutable();
           }
-          if (state.cells.All(c => c.isMine || c.isRevealed)) {
-            state.isPlaying = false;
-          }
+          state = state with {
+            cells = cells.ToImmutable(),
+            isPlaying = !cells.All(c => c.isMine || c.isRevealed),
+          };
         }
         break;
       }
       case Event.Flag e: {
         if (!state.isPlaying) break;
         var i = state.x + state.y * config.size;
-        var cell = state.cells[i];
-        cell.isFlagged = !cell.isFlagged;
-        state.cells = state.cells.SetItem(i, cell);
+        var c = state.cells[i];
+        state = state with {
+          cells = state.cells.SetItem(i, c with { isFlagged = !c.isFlagged})
+        };
         break;
       }
     }
@@ -191,7 +199,7 @@ public static class Minesweeper {
       for (var x = 0; x < config.size; x++) {
         var cell = state.cells[x + y * config.size];
         if (state.isPlaying && isToggleFrame && state.x == x && state.y == y) {
-          sb.Append("x");
+          sb.Append('x');
         } else {
           sb.Append(RenderCell(cell));
         }
