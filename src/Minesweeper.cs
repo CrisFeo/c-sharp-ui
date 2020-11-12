@@ -15,7 +15,7 @@ public static class Minesweeper {
   ////////////////////
 
   public static void Play(Config config) {
-    using (Terminal.Initialize()) {
+    using (BasicTerminal.Initialize()) {
       var initialState = new State {
         random = new Random.State(12),
         tick = 0,
@@ -32,7 +32,7 @@ public static class Minesweeper {
       store.Subscribe(() => {
         sb.Clear();
         Draw(sb, config, store.GetState());
-        Terminal.Draw(sb.ToString());
+        BasicTerminal.Draw(sb.ToString());
       });
       var nextTick = Time.Now() + TICK_INTERVAL;
       var isRunning = true;
@@ -41,7 +41,7 @@ public static class Minesweeper {
           store.Dispatch(new Event.Tick());
           nextTick = Time.Now() + TICK_INTERVAL;
         }
-        if (Terminal.ReadKey(out var info)) {
+        if (BasicTerminal.ReadKey(out var info)) {
           isRunning = Input(store.Dispatch, info.Key);
         }
         store.Process();

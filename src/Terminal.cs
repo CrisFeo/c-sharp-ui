@@ -1,7 +1,7 @@
 using System;
 using System.Diagnostics;
 
-public static class Terminal {
+public static class BasicTerminal {
 
   // Static vars
   ////////////////////
@@ -72,4 +72,3 @@ public static class Terminal {
   }
 
 }
-
