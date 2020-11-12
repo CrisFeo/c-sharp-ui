@@ -1,6 +1,5 @@
 using System;
 
-using T = Rendering.Terminal;
 using K = Rendering.Key;
 
 public static class Program {
@@ -11,17 +10,16 @@ public static class Program {
         //size = 20,
         //mineChance = 0.15f,
       //});
-      T.Startup(60, 60, "minesweeper");
-      var isRunning = true;
-      while (isRunning && !T.ShouldClose()) {
-        T.Clear();
-        var input = T.FetchInput();
-        if (input.Contains(K.Enter)) isRunning = false;
-        T.Set(0, 0, "time " + Time.Now().ToString("F1"));
-        T.Render();
-        T.Poll();
+      using (var t = new Rendering.Terminal(60, 60, "minesweeper")) {
+        var isRunning = true;
+        while (isRunning && !t.ShouldClose) {
+          t.Clear();
+          if (t.Input.Contains(K.Enter)) isRunning = false;
+          t.Set(0, 0, "time " + Time.Now().ToString("F1"));
+          t.Render();
+          t.Poll();
+        }
       }
-      T.Shutdown();
     } catch (Exception e) {
       Console.WriteLine(e);
     }

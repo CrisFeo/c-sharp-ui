@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Threading;
 
 public static class Time {
 
@@ -29,7 +30,7 @@ public static class Time {
   }
 
   public static void Yield() {
-    System.Threading.Thread.Yield();
+    Thread.Yield();
   }
 
   public static float Sleep(float duration) {
@@ -41,7 +42,7 @@ public static class Time {
         while (Now() < end);
       } else {
         var sleepTime = (int)((remaining - BUSY_WAIT_THRESHOLD) * 1000);
-        System.Threading.Thread.Sleep(sleepTime);
+        Thread.Sleep(sleepTime);
       }
       remaining = end - Now();
     }
