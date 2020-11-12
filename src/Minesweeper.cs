@@ -14,19 +14,13 @@ public static class Minesweeper {
   // Public methods
   ////////////////////
 
-  public static void Play(int size, float mineChance) {
+  public static void Play(Config config) {
     using (Terminal.Initialize()) {
-      var config = new Config {
-        size = size,
-        mineChance = mineChance,
-      };
       var initialState = new State {
         random = new Random.State(12),
         tick = 0,
         isPlaying = false,
-        cells = new Cell[config.size * config.size]
-          .ToImmutableList()
-          .ConvertAll(c => new Cell{}),
+        cells = new Lst<Cell>(config.size * config.size).Map(c => new Cell{}),
         x = 0,
         y = 0,
       };
@@ -59,18 +53,18 @@ public static class Minesweeper {
   // Structs
   ////////////////////
 
-  record Config {
+  public record Config {
     public int size         {get; init; }
     public float mineChance {get; init; }
   }
 
   record State {
-    public Random.State random       { get; init; }
-    public int tick                  { get; init; }
-    public bool isPlaying            { get; init; }
-    public ImmutableList<Cell> cells { get; init; }
-    public int x                     { get; init; }
-    public int y                     { get; init; }
+    public Random.State random { get; init; }
+    public int tick            { get; init; }
+    public bool isPlaying      { get; init; }
+    public Lst<Cell> cells     { get; init; }
+    public int x               { get; init; }
+    public int y               { get; init; }
   }
 
   record Cell {
@@ -132,7 +126,7 @@ public static class Minesweeper {
         state = state with {
           random = random,
           isPlaying = true,
-          cells = cells.ToImmutableList(),
+          cells = Lst<Cell>.Empty.AddRange(cells),
           x = (int)(config.size / 2),
           y = (int)(config.size / 2),
         };
@@ -174,7 +168,7 @@ public static class Minesweeper {
             }
           }
           state = state with {
-            cells = cells.ToImmutable(),
+            cells = new Lst<Cell>(cells),
             isPlaying = !cells.All(c => c.isMine || c.isRevealed),
           };
         }
@@ -185,7 +179,7 @@ public static class Minesweeper {
         var i = state.x + state.y * config.size;
         var c = state.cells[i];
         state = state with {
-          cells = state.cells.SetItem(i, c with { isFlagged = !c.isFlagged})
+          cells = state.cells.Set(i, c with { isFlagged = !c.isFlagged})
         };
         break;
       }
