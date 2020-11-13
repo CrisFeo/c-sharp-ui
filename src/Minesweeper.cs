@@ -3,6 +3,7 @@ using System.Text;
 using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using Rendering;
 
 public static class Minesweeper {
 
@@ -15,7 +16,7 @@ public static class Minesweeper {
   ////////////////////
 
   public static void Play(Config config) {
-    using (BasicTerminal.Initialize()) {
+    using (var t = new Rendering.Terminal(60, 60, "minesweeper")) {
       var initialState = new State {
         random = new Random.State(12),
         tick = 0,
@@ -28,24 +29,21 @@ public static class Minesweeper {
         (s, e) => Step(config, s, e),
         initialState
       );
-      var sb = new StringBuilder();
       store.Subscribe(() => {
-        sb.Clear();
-        Draw(sb, config, store.GetState());
-        BasicTerminal.Draw(sb.ToString());
+        t.Clear();
+        Draw(t, config, store.GetState());
+        t.Render();
       });
       var nextTick = Time.Now() + TICK_INTERVAL;
       var isRunning = true;
-      while (isRunning) {
+      while (isRunning && !t.ShouldClose) {
         if (Time.Now() >= nextTick) {
           store.Dispatch(new Event.Tick());
           nextTick = Time.Now() + TICK_INTERVAL;
         }
-        if (BasicTerminal.ReadKey(out var info)) {
-          isRunning = Input(store.Dispatch, info.Key);
-        }
+        isRunning = Input(t, store.Dispatch);
         store.Process();
-        Time.Yield();
+        t.Poll();
       }
     }
   }
@@ -85,17 +83,16 @@ public static class Minesweeper {
   // Internal methods
   ////////////////////
 
-  static bool Input(Action<Event> dispatch, ConsoleKey key) {
-    switch(key) {
-      case ConsoleKey.H: dispatch(new Event.Move{ x = -1, y =  0 }); break;
-      case ConsoleKey.J: dispatch(new Event.Move{ x =  0, y =  1 }); break;
-      case ConsoleKey.K: dispatch(new Event.Move{ x =  0, y = -1 }); break;
-      case ConsoleKey.L: dispatch(new Event.Move{ x =  1, y =  0 }); break;
-      case ConsoleKey.Z: dispatch(new Event.Check()); break;
-      case ConsoleKey.X: dispatch(new Event.Flag()); break;
-      case ConsoleKey.S: dispatch(new Event.NewGame()); break;
-      case ConsoleKey.Q: return false;
-    }
+  static bool Input(Terminal t, Action<Event> dispatch) {
+    Console.WriteLine(t.KeyDown(Key.M));
+    if (t.KeyDown(Key.H)) dispatch(new Event.Move{ x = -1, y =  0 });
+    if (t.KeyDown(Key.J)) dispatch(new Event.Move{ x =  0, y =  1 });
+    if (t.KeyDown(Key.K)) dispatch(new Event.Move{ x =  0, y = -1 });
+    if (t.KeyDown(Key.L)) dispatch(new Event.Move{ x =  1, y =  0 });
+    if (t.KeyDown(Key.Z)) dispatch(new Event.Check());
+    if (t.KeyDown(Key.X)) dispatch(new Event.Flag());
+    if (t.KeyDown(Key.S)) dispatch(new Event.NewGame());
+    if (t.KeyDown(Key.Q)) return false;
     return true;
   }
 
@@ -187,20 +184,19 @@ public static class Minesweeper {
     return state;
   }
 
-  static void Draw(StringBuilder sb, Config config, State state) {
+  static void Draw(Terminal t, Config config, State state) {
     var isToggleFrame = state.tick % 2 == 0;
     for (var y = 0; y < config.size; y++) {
       for (var x = 0; x < config.size; x++) {
         var cell = state.cells[x + y * config.size];
         if (state.isPlaying && isToggleFrame && state.x == x && state.y == y) {
-          sb.Append('x');
+          t.Set(x, y, 'x');
         } else {
-          sb.Append(RenderCell(cell));
+          t.Set(x, y, RenderCell(cell));
         }
       }
-      sb.AppendLine();
     }
-    sb.Append(state.isPlaying ? "playing" : "game over");
+    t.Set(0, config.size, state.isPlaying ? "playing" : "game over");
   }
 
   static char RenderCell(Cell c) {
