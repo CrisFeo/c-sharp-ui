@@ -192,21 +192,35 @@ public static class Minesweeper {
         if (state.isPlaying && isToggleFrame && state.x == x && state.y == y) {
           t.Set(x, y, 'x');
         } else {
-          t.Set(x, y, RenderCell(cell));
+          var (c, fg, bg) = RenderCell(cell);
+          t.Set(x, y, c, fg, bg);
         }
       }
     }
     t.Set(0, config.size, state.isPlaying ? "playing" : "game over");
   }
 
-  static char RenderCell(Cell c) {
-    if (c.isFlagged) return 'F';
+  static (char, Color, Color) RenderCell(Cell c) {
+    var fg = Colors.White;
+    var bg = Colors.Black;
+    if (c.isFlagged) return ('F', fg, bg);
     if (c.isRevealed) {
-      if (c.isMine) return '*';
-      if (c.count == 0) return ' ';
-      return (char)(c.count + 48);
+      if (c.isMine) return ('*', fg, bg);
+      if (c.count == 0) return (' ', fg, bg);
+      switch (c.count) {
+        case 1:  fg = Colors.Blue;        break;
+        case 2:  fg = Colors.Green;       break;
+        case 3:  fg = Colors.Red;         break;
+        case 4:  fg = Colors.Magenta;     break;
+        case 5:  fg = Colors.DarkMagenta; break;
+        case 6:  fg = Colors.Cyan;        break;
+        case 7:  fg = Colors.Yellow;      break;
+        default: fg = Colors.Gray;        break;
+      }
+      var ch = (char)(c.count + 48);
+      return (ch, fg, bg);
     }
-    return '.';
+    return ('.', fg, bg);
   }
 
   static List<int> Neighbors(int size, int i) {
