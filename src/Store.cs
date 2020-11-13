@@ -2,43 +2,47 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 
-public class Store<S, E> {
+public class Store<State, Event> : IDisposable {
 
   // Internal vars
   ////////////////////
 
-  Func<E, S, S> step;
-  List<Action> callbacks;
-  BlockingCollection<E> events;
-  ConcurrentStack<(E, S)> history;
+  Func<State, Event, (State, Cmd<Event>)> step;
+  Action<State> view;
+  Sub<Event> subs;
+  BlockingCollection<Event> events;
+  Stack<(Event, State)> history;
 
   // Constructors
   ////////////////////
 
-  public Store(Func<E, S, S> step, S initialState) {
+  public Store(
+    State init,
+    Func<State, Event, (State, Cmd<Event>)> step,
+    Action<State> view,
+    Sub<Event> subs
+  ) {
     this.step = step;
-    callbacks = new List<Action>();
-    events = new BlockingCollection<E>();
-    history = new ConcurrentStack<(E, S)>();
-    history.Push((default(E), initialState));
+    this.view = view;
+    this.subs = subs;
+    events = new BlockingCollection<Event>();
+    history = new Stack<(Event, State)>();
+    history.Push((default(Event), init));
   }
 
   // Public methods
   ////////////////////
 
-  public Action Subscribe(Action callback) {
-    callbacks.Add(callback);
-    return () => callbacks.Remove(callback);
+  public void Dispose() {
+    subs?.stop();
   }
 
-  public S GetState() {
-    var ok = history.TryPeek(out var entry);
-    if (!ok) throw new Exception("history was empty");
-    var (_, state) = entry;
-    return state;
+  public void Start() {
+    view(GetState());
+    subs?.start(Dispatch);
   }
 
-  public void Dispatch(E evt) {
+  public void Dispatch(Event evt) {
     events.Add(evt);
   }
 
@@ -54,13 +58,23 @@ public class Store<S, E> {
   // Internal methods
   ////////////////////
 
-  void ProcessAndDrain(E evt) {
-    var state = GetState();
+  State GetState() {
+    var ok = history.TryPeek(out var entry);
+    if (!ok) throw new Exception("history was empty");
+    var (_, state) = entry;
+    return state;
+  }
+
+  void ProcessAndDrain(Event evt) {
+    var previousState = GetState();
+    var state = previousState;
+    var cmd = default(Cmd<Event>);
     do {
-      state = step(evt, state);
+      (state, cmd) = step(state, evt);
       history.Push((evt, state));
+      cmd?.run(Dispatch);
     } while (events.TryTake(out evt));
-    foreach (var cbk in callbacks) cbk();
+    if (!state.Equals(previousState)) view(state);
   }
 
 }

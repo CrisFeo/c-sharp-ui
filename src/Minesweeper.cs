@@ -16,36 +16,23 @@ public static class Minesweeper {
   ////////////////////
 
   public static void Play(Config config) {
-    using (var t = new Rendering.Terminal(60, 60, "minesweeper")) {
-      var initialState = new State {
+    App.Terminal(
+      new State {
         random = new Random.State(12),
         tick = 0,
         isPlaying = false,
-        cells = new Lst<Cell>(config.size * config.size).Map(c => new Cell{}),
+        cells = new Lst<Cell>(config.size * config.size).Map(c => new Cell()),
         x = 0,
         y = 0,
-      };
-      var store = new Store<State, Event>(
-        (s, e) => Step(config, s, e),
-        initialState
-      );
-      store.Subscribe(() => {
-        t.Clear();
-        Draw(t, config, store.GetState());
-        t.Render();
-      });
-      var nextTick = Time.Now() + TICK_INTERVAL;
-      var isRunning = true;
-      while (isRunning && !t.ShouldClose) {
-        if (Time.Now() >= nextTick) {
-          store.Dispatch(new Event.Tick());
-          nextTick = Time.Now() + TICK_INTERVAL;
-        }
-        isRunning = Input(t, store.Dispatch);
-        store.Process();
-        t.Poll();
-      }
-    }
+      },
+      (t, d) => Input(config, t, d),
+      (s, e) => Step(config, s, e),
+      (t, s) => Draw(config, t, s),
+      Sub.Every<Event>(TICK_INTERVAL, () => new Event.Tick()),
+      60,
+      60,
+      "minesweeper"
+    );
   }
 
   // Structs
@@ -63,6 +50,7 @@ public static class Minesweeper {
     public Lst<Cell> cells     { get; init; }
     public int x               { get; init; }
     public int y               { get; init; }
+    public float time          { get; init; }
   }
 
   record Cell {
@@ -72,23 +60,23 @@ public static class Minesweeper {
     public bool isFlagged  { get; init; }
   }
 
-  class Event {
-    public class Tick    : Event { }
-    public class NewGame : Event { }
-    public class Move    : Event { public int x; public int y; }
-    public class Check   : Event { }
-    public class Flag    : Event { }
+  record Event {
+    public record Time(float time)   : Event;
+    public record Tick()             : Event;
+    public record NewGame()          : Event;
+    public record Move(int x, int y) : Event;
+    public record Check()            : Event;
+    public record Flag()             : Event;
   }
 
   // Internal methods
   ////////////////////
 
-  static bool Input(Terminal t, Action<Event> dispatch) {
-    Console.WriteLine(t.KeyDown(Key.M));
-    if (t.KeyDown(Key.H)) dispatch(new Event.Move{ x = -1, y =  0 });
-    if (t.KeyDown(Key.J)) dispatch(new Event.Move{ x =  0, y =  1 });
-    if (t.KeyDown(Key.K)) dispatch(new Event.Move{ x =  0, y = -1 });
-    if (t.KeyDown(Key.L)) dispatch(new Event.Move{ x =  1, y =  0 });
+  static bool Input(Config config, Terminal t, Action<Event> dispatch) {
+    if (t.KeyDown(Key.H)) dispatch(new Event.Move(-1,  0));
+    if (t.KeyDown(Key.J)) dispatch(new Event.Move( 0,  1));
+    if (t.KeyDown(Key.K)) dispatch(new Event.Move( 0, -1));
+    if (t.KeyDown(Key.L)) dispatch(new Event.Move( 1,  0));
     if (t.KeyDown(Key.Z)) dispatch(new Event.Check());
     if (t.KeyDown(Key.X)) dispatch(new Event.Flag());
     if (t.KeyDown(Key.S)) dispatch(new Event.NewGame());
@@ -96,11 +84,13 @@ public static class Minesweeper {
     return true;
   }
 
-  static State Step(Config config, Event evt, State state) {
+  static (State, Cmd<Event>) Step(Config config, State state, Event evt) {
     switch(evt) {
       case Event.Tick e: {
-        state = state with { tick = state.tick + 1 };
-        break;
+        return (state with { tick = state.tick + 1 }, null);
+      }
+      case Event.Time e: {
+        return (state with { time = e.time }, null);
       }
       case Event.NewGame e: {
         if (state.isPlaying) break;
@@ -120,71 +110,67 @@ public static class Minesweeper {
           }
           cells[i] = cells[i] with { count = count };
         }
-        state = state with {
+        return (state with {
           random = random,
           isPlaying = true,
           cells = Lst<Cell>.Empty.AddRange(cells),
           x = (int)(config.size / 2),
           y = (int)(config.size / 2),
-        };
-        break;
+        }, null);
       }
       case Event.Move e: {
         if (!state.isPlaying) break;
-        state = state with {
+        return (state with {
           x = Clamp(0, config.size - 1, state.x + e.x),
           y = Clamp(0, config.size - 1, state.y + e.y),
-        };
-        break;
+        }, null);
       }
       case Event.Check e: {
         if (!state.isPlaying) break;
         var cursorIndex = state.x + state.y * config.size;
         var cell = state.cells[cursorIndex];
-        if (!cell.isFlagged) {
-          var cells = state.cells.ToBuilder();
-          if (cell.isMine) {
-            for (var i = 0; i < cells.Count; i++) {
-              cells[i] = cells[i] with { isRevealed = true };
-            }
-          } else {
-            var front = new HashSet<int>();
-            var visited = new HashSet<int>();
-            front.Add(cursorIndex);
-            while (front.Count != 0) {
-              var ci = front.First();
-              front.Remove(ci);
-              visited.Add(ci);
-              var c = cells[ci] with { isRevealed = true };
-              cells[ci] = c;
-              if (c.count == 0) {
-                foreach (var ni in Neighbors(config.size, ci)) {
-                  if (!visited.Contains(ni)) front.Add(ni);
-                }
+        if (cell.isFlagged) break;
+        var cells = state.cells.ToBuilder();
+        if (cell.isMine) {
+          for (var i = 0; i < cells.Count; i++) {
+            cells[i] = cells[i] with { isRevealed = true };
+          }
+        } else {
+          var front = new HashSet<int>();
+          var visited = new HashSet<int>();
+          front.Add(cursorIndex);
+          while (front.Count != 0) {
+            var ci = front.First();
+            front.Remove(ci);
+            visited.Add(ci);
+            var c = cells[ci] with { isRevealed = true };
+            cells[ci] = c;
+            if (c.count == 0) {
+              foreach (var ni in Neighbors(config.size, ci)) {
+                if (!visited.Contains(ni)) front.Add(ni);
               }
             }
           }
-          state = state with {
-            cells = new Lst<Cell>(cells),
-            isPlaying = !cells.All(c => c.isMine || c.isRevealed),
-          };
         }
-        break;
+        return (state with {
+          cells = new Lst<Cell>(cells),
+          isPlaying = !cells.All(c => c.isMine || c.isRevealed),
+        }, null);
       }
       case Event.Flag e: {
         if (!state.isPlaying) break;
         var i = state.x + state.y * config.size;
         var c = state.cells[i];
-        state = state with {
+        return (state with {
           cells = state.cells.Set(i, c with { isFlagged = !c.isFlagged})
-        };
-        break;
+        }, null);
       }
     }
-    return state;
+    return (state, null);
   }
 
-  static void Draw(Terminal t, Config config, State state) {
+  static void Draw(Config config, Terminal t, State state) {
+    t.Clear();
     var isToggleFrame = state.tick % 2 == 0;
     for (var y = 0; y < config.size; y++) {
       for (var x = 0; x < config.size; x++) {
@@ -198,6 +184,8 @@ public static class Minesweeper {
       }
     }
     t.Set(0, config.size, state.isPlaying ? "playing" : "game over");
+    t.Set(0, config.size + 1, state.time.ToString());
+    t.Render();
   }
 
   static (char, Color, Color) RenderCell(Cell c) {
