@@ -7,4 +7,7 @@
   <ItemGroup>
     <ProjectReference Include="../c-sharp-renderer/c-sharp-renderer.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Facebook.Yoga" Version="1.5.0-pre1" />
+  </ItemGroup>
 </Project>

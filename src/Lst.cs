@@ -30,6 +30,10 @@ public struct Lst<T> : IEquatable<Lst<T>> {
 
   public int Count { get => data.Count; }
 
+  public T First { get => Count == 0 ? default(T) : this[0]; }
+
+  public T Last { get => Count == 0 ? default(T) : this[Count - 1]; }
+
   // Public methods
   ////////////////////
 

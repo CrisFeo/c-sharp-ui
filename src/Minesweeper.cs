@@ -40,23 +40,23 @@ public static class Minesweeper {
   ////////////////////
 
   public record Config {
-    public int size         {get; init; }
+    public int   size       {get; init; }
     public float mineChance {get; init; }
   }
 
   record State {
-    public Random.State random { get; init; }
-    public Config config       { get; init; }
-    public int tick            { get; init; }
-    public bool isPlaying      { get; init; }
-    public Lst<Cell> cells     { get; init; }
-    public int x               { get; init; }
-    public int y               { get; init; }
-    public float time          { get; init; }
+    public Random.State random    { get; init; }
+    public Config       config    { get; init; }
+    public int          tick      { get; init; }
+    public bool         isPlaying { get; init; }
+    public Lst<Cell>    cells     { get; init; }
+    public int          x         { get; init; }
+    public int          y         { get; init; }
+    public float        time      { get; init; }
   }
 
   record Cell {
-    public int count       { get; init; }
+    public int  count      { get; init; }
     public bool isMine     { get; init; }
     public bool isRevealed { get; init; }
     public bool isFlagged  { get; init; }
