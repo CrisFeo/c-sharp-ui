@@ -95,16 +95,20 @@ public static class MatrixOverload {
 
   static bool Input(Terminal t, Action<Event> dispatch) {
     if (t.KeyDown(Key.Q)) return false;
-    if (t.KeyDown(Key.S)) dispatch(new Event.NewGame());
-    if (t.KeyDown(Key.H)) dispatch(new Event.Move(-1,  0));
-    if (t.KeyDown(Key.J)) dispatch(new Event.Move( 0,  1));
-    if (t.KeyDown(Key.K)) dispatch(new Event.Move( 0, -1));
-    if (t.KeyDown(Key.L)) dispatch(new Event.Move( 1,  0));
-    if (t.KeyDown(Key.Y)) dispatch(new Event.Move(-1, -1));
-    if (t.KeyDown(Key.U)) dispatch(new Event.Move( 1, -1));
-    if (t.KeyDown(Key.B)) dispatch(new Event.Move(-1,  1));
-    if (t.KeyDown(Key.N)) dispatch(new Event.Move( 1,  1));
-    if (t.KeyDown(Key.Z)) dispatch(new Event.Place());
+    if (t.KeyDown(Key.S))     dispatch(new Event.NewGame());
+    if (t.KeyDown(Key.Left))  dispatch(new Event.Move(-1,  0));
+    if (t.KeyDown(Key.Right)) dispatch(new Event.Move( 1,  0));
+    if (t.KeyDown(Key.Down))  dispatch(new Event.Move( 0,  1));
+    if (t.KeyDown(Key.Up))    dispatch(new Event.Move( 0, -1));
+    if (t.KeyDown(Key.H))     dispatch(new Event.Move(-1,  0));
+    if (t.KeyDown(Key.J))     dispatch(new Event.Move( 0,  1));
+    if (t.KeyDown(Key.K))     dispatch(new Event.Move( 0, -1));
+    if (t.KeyDown(Key.L))     dispatch(new Event.Move( 1,  0));
+    if (t.KeyDown(Key.Y))     dispatch(new Event.Move(-1, -1));
+    if (t.KeyDown(Key.U))     dispatch(new Event.Move( 1, -1));
+    if (t.KeyDown(Key.B))     dispatch(new Event.Move(-1,  1));
+    if (t.KeyDown(Key.N))     dispatch(new Event.Move( 1,  1));
+    if (t.KeyDown(Key.Z))     dispatch(new Event.Place());
     return true;
   }
 
