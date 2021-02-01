@@ -1,13 +1,14 @@
 using System;
 
-using K = Rendering.Key;
-
 public static class Program {
 
   public static void Main() {
     try {
+      LayoutTest.Run();
+      /*
       MatrixOverload.Play(new MatrixOverload.Config {
       });
+      */
       /*
       Minesweeper.Play(new Minesweeper.Config {
         size = 20,
