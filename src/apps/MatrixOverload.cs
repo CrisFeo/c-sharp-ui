@@ -30,7 +30,7 @@ public static class MatrixOverload {
   // Public methods
   ////////////////////
 
-  public static void Play(Config config) {
+  public static void Run(Config config) {
     App.Terminal(
       init: new State {
         random = new Random.State(12),
@@ -220,13 +220,13 @@ public static class MatrixOverload {
           if (c != null) {
             RenderCard(t, x * 4, y * 4, c);
           } else {
-            RenderBox(t, x * 4, y * 4, 3, 3, Colors.White, Colors.Black);
+            Drawing.Box(t, x * 4, y * 4, 3, 3, Colors.White, Colors.Black);
           }
         }
       }
       if (state.draw != null) {
         RenderCard(t, 4 * 4, 5 * 4, state.draw);
-        RenderBox(t, state.x * 4 - 1, state.y * 4 - 1, 5, 5, Colors.Yellow, Colors.Black);
+        Drawing.Box(t, state.x * 4 - 1, state.y * 4 - 1, 5, 5, Colors.Yellow, Colors.Black);
         var stack = state.grid[state.y * 5 + state.x];
         for (var i = 0; i < stack.Count; i++) {
           RenderCard(t, 5 * 4, i * 4 + 1,stack[stack.Count - 1 - i]);
@@ -259,23 +259,6 @@ public static class MatrixOverload {
     t.Set(x, y + 0, rankStr.PadRight(3), fg, bg);
     t.Set(x, y + 1, $" {suitChar} ",     fg, bg);
     t.Set(x, y + 2, rankStr.PadLeft(3),  fg, bg);
-  }
-
-  static void RenderBox(Terminal t, int x, int y, int w, int h, Color fg, Color bg) {
-    var left = x;
-    var top = y;
-    var right = left + w - 1;
-    var bottom = top + h - 1;
-    t.Set(left,     top, (char)218,                    fg, bg);
-    t.Set(right,    top, (char)191,                    fg, bg);
-    t.Set(left + 1, top, new String((char)196, w - 2), fg, bg);
-    for (var i = 1; i < h; i++) {
-      t.Set(left,  top + i, (char)179, fg, bg);
-      t.Set(right, top + i, (char)179, fg, bg);
-    }
-    t.Set(left,     bottom, (char)192,                    fg, bg);
-    t.Set(right,    bottom, (char)217,                    fg, bg);
-    t.Set(left + 1, bottom, new String((char)196, w - 2), fg, bg);
   }
 
   static ImmutableList<Card>.Builder ShuffleDeck(ref Random.State random) {

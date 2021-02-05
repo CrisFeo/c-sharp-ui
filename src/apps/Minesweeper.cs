@@ -15,7 +15,7 @@ public static class Minesweeper {
   // Public methods
   ////////////////////
 
-  public static void Play(Config config) {
+  public static void Run(Config config) {
     App.Terminal(
       init: new State {
         random = new Random.State(12),

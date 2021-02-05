@@ -55,6 +55,10 @@ public class Store<State, Event> : IDisposable {
     ProcessAndDrain(evt);
   }
 
+  public void ForceRedraw() {
+    view(GetState());
+  }
+
   // Internal methods
   ////////////////////
 

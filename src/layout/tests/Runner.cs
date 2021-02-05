@@ -1,14 +1,23 @@
 using System;
+using System.Collections.Generic;
 using Rendering;
 
-using W = Widgets;
+using W = Layout.Widgets.Library;
 
-static class LayoutTest {
+namespace Layout.Tests {
+
+static class Runner {
+
+  // Public methods
+  ////////////////////
 
   public static void Run() {
-    //TestRenderDiff();
-    TestRenderResponsive();
+    TestRenderDiff();
+    //TestRenderResponsive();
   }
+
+  // Internal methods
+  ////////////////////
 
   static void TestRenderDiff() {
     var ar = W.Row(
@@ -19,10 +28,10 @@ static class LayoutTest {
       )
     );
     var br = W.Row(
-      W.Text("hello"),
+      W.Text("halo"),
       W.FillWidth(null),
       W.Border(
-        W.Text("friends")
+        W.Text("world")
       )
     );
     var c = new Constraint {
@@ -33,9 +42,9 @@ static class LayoutTest {
     };
     ar.Layout(c);
     br.Layout(c);
-    using (var t = new Rendering.Terminal(50, 50, nameof(LayoutTest))) {
-      LayoutHelper.RenderSubTree(t, ar, 0, 0);
-      LayoutHelper.RenderDiff(t, ar, br, 0, 0);
+    using (var t = new Rendering.Terminal(50, 50, "layout test")) {
+      RenderLayout.Tree(t, ar);
+      RenderLayout.Diff(t, ar, br);
       t.Render();
       while (!t.ShouldClose) {
         t.Poll();
@@ -69,7 +78,7 @@ static class LayoutTest {
         )
       )
     );
-    using (var t = new Rendering.Terminal(50, 50, nameof(LayoutTest))) {
+    using (var t = new Rendering.Terminal(50, 50, "layout test")) {
       var c = new Constraint {
         xMin = 0,
         xMax = -1,
@@ -87,10 +96,10 @@ static class LayoutTest {
           };
           next.Layout(c);
           if (prev == null) {
-            LayoutHelper.PrintTree(next, 0, 0);
-            LayoutHelper.RenderSubTree(t, next, 0, 0);
+            LayoutUtils.PrintTree(next);
+            RenderLayout.Tree(t, next);
           } else {
-            LayoutHelper.RenderDiff(t, prev, next, 0, 0);
+            RenderLayout.Diff(t, prev, next);
           }
           t.Render();
           prev = next;
@@ -103,3 +112,4 @@ static class LayoutTest {
 
 }
 
+}

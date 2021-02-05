@@ -23,7 +23,13 @@ public static partial class App {
     )) {
       store.Start();
       var isRunning = true;
+      var size = terminal.Size;
       while (isRunning && !terminal.ShouldClose) {
+        var newSize = terminal.Size;
+        if (newSize != size) {
+          size = newSize;
+          store.ForceRedraw();
+        }
         isRunning = input(terminal, store.Dispatch);
         store.Process();
         terminal.Poll();
@@ -32,4 +38,3 @@ public static partial class App {
   }
 
 }
-

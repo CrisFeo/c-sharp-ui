@@ -4,17 +4,10 @@ public static class Program {
 
   public static void Main() {
     try {
-      LayoutTest.Run();
-      /*
-      MatrixOverload.Play(new MatrixOverload.Config {
-      });
-      */
-      /*
-      Minesweeper.Play(new Minesweeper.Config {
-        size = 20,
-        mineChance = 0.15f,
-      });
-      */
+      Todo.Run(new Todo.Config { });
+      //MatrixOverload.Run(new MatrixOverload.Config { });
+      //Minesweeper.Run(new Minesweeper.Config { size = 20, mineChance = 0.15f });
+      //Layout.Tests.Runner.Run();
     } catch (Exception e) {
       Console.WriteLine(e);
     }

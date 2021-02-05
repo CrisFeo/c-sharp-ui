@@ -1,9 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
-public struct Lst<T> : IEquatable<Lst<T>> {
+public struct Lst<T> : IEquatable<Lst<T>>, IEnumerable<T> {
 
   public static readonly Lst<T> Empty = new Lst<T>(ImmutableList<T>.Empty);
 
@@ -56,5 +57,15 @@ public struct Lst<T> : IEquatable<Lst<T>> {
   public static bool operator!=(Lst<T> a, Lst<T> b) => !a.Equals(b);
 
   public override bool Equals(object o) => (o is Lst<T> e) ? Equals(e) : false;
+
+  public IEnumerator<T> GetEnumerator() {
+    for (var i = 0; i < Count; i++) {
+      yield return this[i];
+    }
+  }
+
+  IEnumerator IEnumerable.GetEnumerator() {
+    return GetEnumerator();
+  }
 
 }
