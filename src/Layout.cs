@@ -14,143 +14,150 @@ public record Geometry {
   public int h { get; init; }
 }
 
-public interface IWidget {
-  Geometry Layout(Constraint c);
-  void Render(Terminal t, int x, int y);
+public abstract class BaseWidget {
+  public Geometry Geometry { get; protected set; }
+  public (int, int) Position { get; set; }
+  public int StateHash { get; protected set; }
+  public abstract Geometry Layout(Constraint c);
+  public abstract IEnumerable<BaseWidget> Visit();
+  public virtual void Render(Terminal t, int x, int y) { }
 }
 
-public abstract class SingleChildWidget : IWidget {
-  protected string name;
-  protected Geometry geometry;
-  protected IWidget child;
-  protected (int, int) childPosition;
-  public abstract Geometry Layout(Constraint c);
-  public virtual void Render(Terminal t, int x, int y) {
-    LayoutHelper.Debug(t, name, x, y, geometry);
-    if (child == null) return;
-    var (childX, childY) = childPosition;
-    child.Render(t, x + childX, y + childY);
+public abstract class SingleChildWidget : BaseWidget {
+
+  protected BaseWidget child;
+
+  public override IEnumerable<BaseWidget> Visit() {
+    if (child == null) yield break;
+    yield return child;
   }
+
 }
 
 
-public abstract class MultiChildWidget : IWidget {
-  protected string name;
-  protected Geometry geometry;
-  protected List<IWidget> children;
-  protected List<(int, int)> childrenPositions;
-  public abstract Geometry Layout(Constraint c);
-  public virtual void Render(Terminal t, int x, int y) {
-    LayoutHelper.Debug(t, name, x, y, geometry);
+public abstract class MultiChildWidget : BaseWidget {
+
+  protected List<BaseWidget> children;
+
+  public override IEnumerable<BaseWidget> Visit() {
     for (var i = 0; i < children.Count; i++) {
-      var (childX, childY) = childrenPositions[i];
-      children[i].Render(t, x + childX, y + childY);
+      yield return children[i];
     }
   }
+
 }
 
 public class FixedWidthWidget : SingleChildWidget {
+
   int width;
-  public FixedWidthWidget(string name, int width, IWidget child) {
-    this.name = name;
+
+  public FixedWidthWidget(int width, BaseWidget child) {
     this.width = width;
     this.child = child;
   }
+
   public override Geometry Layout(Constraint c) {
     var w = LayoutHelper.Clamp(c.xMin, c.xMax, width);
     if (child == null) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = w,
         h = c.yMin,
       };
     } else {
-      childPosition = (0, 0);
-      geometry = child.Layout(c with {
+      child.Position = (0, 0);
+      Geometry = child.Layout(c with {
         xMin = w,
         xMax = w,
       });
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
 public class FixedHeightWidget : SingleChildWidget {
+
   int height;
-  public FixedHeightWidget(string name, int height, IWidget child) {
-    this.name = name;
+
+  public FixedHeightWidget(int height, BaseWidget child) {
     this.height = height;
     this.child = child;
   }
+
   public override Geometry Layout(Constraint c) {
     var h = LayoutHelper.Clamp(c.yMin, c.yMax, height);
     if (child == null) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMin,
         h = h,
       };
     } else {
-      childPosition = (0, 0);
-      geometry = child.Layout(c with {
+      child.Position = (0, 0);
+      Geometry = child.Layout(c with {
         yMin = h,
         yMax = h,
       });
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
 public class FillWidthWidget : SingleChildWidget {
-  public FillWidthWidget(string name, IWidget child) {
-    this.name = name;
+
+  public FillWidthWidget(BaseWidget child) {
     this.child = child;
   }
+
   public override Geometry Layout(Constraint c) {
     if (child == null) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMax,
         h = c.yMin,
       };
     } else {
-      childPosition = (0, 0);
-      geometry = child.Layout(c with {
+      child.Position = (0, 0);
+      Geometry = child.Layout(c with {
         xMin = c.xMax,
       });
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
 public class FillHeightWidget : SingleChildWidget {
-  public FillHeightWidget(string name, IWidget child) {
-    this.name = name;
+
+  public FillHeightWidget(BaseWidget child) {
     this.child = child;
   }
+
   public override Geometry Layout(Constraint c) {
     if (child == null) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMin,
         h = c.yMax,
       };
     } else {
-      childPosition = (0, 0);
-      geometry = child.Layout(c with {
+      child.Position = (0, 0);
+      Geometry = child.Layout(c with {
         yMin = c.yMax,
       });
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
 public class ColumnWidget : MultiChildWidget {
-  public ColumnWidget(string name, IWidget[] children) {
-    this.name = name;
-    this.children = new List<IWidget>(children);
-    childrenPositions = new List<(int, int)>(children.Length);
-    foreach (var c in children) childrenPositions.Add((0, 0));
+
+  public ColumnWidget(BaseWidget[] children) {
+    this.children = new List<BaseWidget>(children);
   }
+
   public override Geometry Layout(Constraint c) {
     if (children.Count == 0) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMin,
         h = c.yMin,
       };
@@ -191,28 +198,28 @@ public class ColumnWidget : MultiChildWidget {
       var width = 0;
       for(var i = 0; i < children.Count; i++) {
         if (childrenGeometry[i].w > width) width = childrenGeometry[i].w;
-        childrenPositions[i] = (0, y);
+        children[i].Position = (0, y);
         y += childrenGeometry[i].h;
       }
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = width,
         h = height,
       };
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
 public class RowWidget : MultiChildWidget {
-  public RowWidget(string name, IWidget[] children) {
-    this.name = name;
-    this.children = new List<IWidget>(children);
-    childrenPositions = new List<(int, int)>(children.Length);
-    foreach (var c in children) childrenPositions.Add((0, 0));
+
+  public RowWidget(BaseWidget[] children) {
+    this.children = new List<BaseWidget>(children);
   }
+
   public override Geometry Layout(Constraint c) {
     if (children.Count == 0) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMin,
         h = c.yMin,
       };
@@ -253,73 +260,80 @@ public class RowWidget : MultiChildWidget {
       var height = 0;
       for(var i = 0; i < children.Count; i++) {
         if (childrenGeometry[i].h > height) height = childrenGeometry[i].h;
-        childrenPositions[i] = (x, 0);
+        children[i].Position = (x, 0);
         x += childrenGeometry[i].w;
       }
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = width,
         h = height,
       };
     }
-    return geometry;
+    return Geometry;
   }
+
 }
 
-public class TextWidget : IWidget {
-  string name;
-  Geometry geometry;
+public class TextWidget : BaseWidget {
+
   string[] lines;
-  public TextWidget(string name, string text) {
-    this.name = name;
+
+  public TextWidget(string text) {
+    StateHash = (text).GetHashCode();
     this.lines = text.Split('\n');
   }
-  public Geometry Layout(Constraint c) {
+
+  public override Geometry Layout(Constraint c) {
     var maxLength = 0;
     foreach (var l in lines) {
       if (l.Length > maxLength) maxLength = l.Length;
     }
-    geometry = new Geometry {
+    Geometry = new Geometry {
       w = LayoutHelper.Clamp(c.xMin, c.xMax, maxLength),
       h = LayoutHelper.Clamp(c.yMin, c.yMax, lines.Length),
     };
-    return geometry;
+    return Geometry;
   }
-  public virtual void Render(Terminal t, int x, int y) {
-    LayoutHelper.Debug(t, name, x, y, geometry);
+
+  public override IEnumerable<BaseWidget> Visit() { yield break; }
+
+  public override void Render(Terminal t, int x, int y) {
     for (var i = 0; i < lines.Length; i++) {
       t.Set(x, y + i, lines[i]);
     }
   }
+
 }
 
 public class BorderWidget : SingleChildWidget {
-  public BorderWidget(string name, IWidget child) {
-    this.name = name;
+
+  public BorderWidget(BaseWidget child) {
     this.child = child;
   }
+
   public override Geometry Layout(Constraint c) {
     if (child == null) {
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = c.xMin,
         h = c.yMin,
       };
     } else {
-      childPosition = (1, 1);
+      child.Position = (1, 1);
       var g = child.Layout(c with {
         xMax = c.xMax - 2,
         yMax = c.yMax - 2,
       });
-      geometry = new Geometry {
+      Geometry = new Geometry {
         w = g.w + 2,
         h = g.h + 2,
       };
     }
-    return geometry;
+    return Geometry;
   }
+
   public override void Render(Terminal t, int x, int y) {
-    base.Render(t, x, y);
-    LayoutHelper.Border(t, x, y, geometry.w, geometry.h, Colors.White, Colors.Black);
+    LayoutHelper.Border(t, x, y, Geometry.w, Geometry.h, Colors.White, Colors.Black);
   }
+
 }
 
 static class LayoutHelper {
@@ -349,45 +363,117 @@ static class LayoutHelper {
     t.Set(left + 1, bottom, horizontal, fg, bg);
   }
 
-  public static void Debug(Terminal t, string n, int x, int y, Geometry g) {
-    Console.WriteLine($"{n} {x},{y} {g.w}x{g.h}");
-    //Border(t, x, y, g.w, g.h, Colors.White, Colors.Black);
+  public static void Blank(Terminal t, int x, int y, int w, int h) {
+    if (w == 0 || h == 0) return;
+    var line = new String(' ', w);
+    for (var i = 0; i < h; i++) {
+      t.Set(x, y + i, line);
+    }
+  }
+
+  public static IEnumerable<(BaseWidget, int)> Tree(BaseWidget r,  int depth = 0) {
+    yield return (r, depth);
+    depth++;
+    foreach (var c in r.Visit()) {
+      foreach (var e in Tree(c, depth)) {
+        yield return e;
+      }
+    }
+  }
+
+  public static void PrintTree(BaseWidget r, int x, int y) {
+    foreach (var (w, d) in Tree(r)) {
+      var indent = new String(' ', 2 * d);
+      var (xw, yw) = w.Position;
+      x += xw;
+      y += yw;
+      var g = w.Geometry;
+      Console.WriteLine($"{indent}{w.GetType().Name} {x},{y} {g.w}x{g.h}");
+    }
+  }
+
+  public static void RenderSubTree(Terminal t, BaseWidget r, int x, int y) {
+    var (xr, yr) = r.Position;
+    x += xr;
+    y += yr;
+    r.Render(t, x, y);
+    foreach (var c in r.Visit()) {
+      RenderSubTree(t, c, x, y);
+    }
+  }
+
+  public static void RenderDiff(Terminal t, BaseWidget prev, BaseWidget next, int x, int y) {
+    var changed = false;
+    if (prev.GetType() != next.GetType()) {
+      Console.WriteLine($"changed widget   {prev.GetType().Name} => {next.GetType().Name}");
+      changed = true;
+    } else if (prev.Position != next.Position) {
+      Console.WriteLine($"changed position {next.GetType().Name}");
+      changed = true;
+    } else if (prev.Geometry != next.Geometry) {
+      Console.WriteLine($"changed geometry {next.GetType().Name}");
+      changed = true;
+    } else if (prev.StateHash != next.StateHash) {
+      Console.WriteLine($"changed state {next.GetType().Name}");
+      changed = true;
+    }
+    if (changed) {
+      var (xPrev, yPrev) = prev.Position;
+      Blank(t, x + xPrev, y + yPrev, prev.Geometry.w, prev.Geometry.h);
+      RenderSubTree(t, next, x, y);
+    } else {
+      var ePrev = prev.Visit().GetEnumerator();
+      var eNext = next.Visit().GetEnumerator();
+      while (ePrev.MoveNext() && eNext.MoveNext()) {
+        var (xNext, yNext) = next.Position;
+        RenderDiff(t, ePrev.Current, eNext.Current, x + xNext, y + yNext);
+      }
+      while (ePrev.MoveNext()) {
+        Console.WriteLine($"removed child {ePrev.Current.GetType().Name}");
+        var (xPrev, yPrev) = ePrev.Current.Position;
+        Blank(t, x + xPrev, y + yPrev, ePrev.Current.Geometry.w, ePrev.Current.Geometry.h);
+      }
+      while (eNext.MoveNext()) {
+        Console.WriteLine($"added child {eNext.Current.GetType().Name}");
+        RenderSubTree(t, eNext.Current, x, y);
+      }
+    }
   }
 
 }
 
 public static class Widgets {
 
-  public static FixedWidthWidget FixedWidth(int width, IWidget child) {
-    return new FixedWidthWidget("FixedWidth", width, child);
+  public static FixedWidthWidget FixedWidth(int width, BaseWidget child) {
+    return new FixedWidthWidget(width, child);
   }
 
-  public static FixedHeightWidget FixedHeight(int height, IWidget child) {
-    return new FixedHeightWidget("FixedHeight", height, child);
+  public static FixedHeightWidget FixedHeight(int height, BaseWidget child) {
+    return new FixedHeightWidget(height, child);
   }
 
-  public static FillWidthWidget FillWidth(IWidget child) {
-    return new FillWidthWidget("FillWidth", child);
+  public static FillWidthWidget FillWidth(BaseWidget child) {
+    return new FillWidthWidget(child);
   }
 
-  public static FillHeightWidget FillHeight(IWidget child) {
-    return new FillHeightWidget("FillHeight", child);
+  public static FillHeightWidget FillHeight(BaseWidget child) {
+    return new FillHeightWidget(child);
   }
 
-  public static ColumnWidget Column(params IWidget[] children) {
-    return new ColumnWidget("Column", children);
+  public static ColumnWidget Column(params BaseWidget[] children) {
+    return new ColumnWidget(children);
   }
 
-  public static RowWidget Row(params IWidget[] children) {
-    return new RowWidget("Row", children);
+  public static RowWidget Row(params BaseWidget[] children) {
+    return new RowWidget(children);
   }
 
   public static TextWidget Text(string text) {
-    return new TextWidget("Text", text);
+    return new TextWidget(text);
   }
 
-  public static BorderWidget Border(IWidget child) {
-    return new BorderWidget("Border", child);
+  public static BorderWidget Border(BaseWidget child) {
+    return new BorderWidget(child);
   }
 
 }
