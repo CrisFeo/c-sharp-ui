@@ -17,19 +17,10 @@ public static class Minesweeper {
 
   public static void Run(Config config) {
     App.Terminal(
-      init: new State {
-        random = new Random.State(12),
-        config = config,
-        tick = 0,
-        isPlaying = false,
-        cells = new Lst<Cell>(config.size * config.size).Map(c => new Cell()),
-        x = 0,
-        y = 0,
-      },
-      input: Input,
+      init: () => Init(config),
+      subs: Subs,
       step: Step,
       view: View,
-      subs: Sub.Every<Event>(TICK_INTERVAL, () => new Event.Tick()),
       width: 60,
       height: 60,
       title: "minesweeper"
@@ -65,6 +56,7 @@ public static class Minesweeper {
   record Event {
     public record Time(float time)   : Event;
     public record Tick()             : Event;
+    public record Quit()             : Event;
     public record NewGame()          : Event;
     public record Move(int x, int y) : Event;
     public record Check()            : Event;
@@ -74,20 +66,44 @@ public static class Minesweeper {
   // Internal methods
   ////////////////////
 
-  static bool Input(Terminal t, Action<Event> dispatch) {
-    if (t.KeyDown(Key.H)) dispatch(new Event.Move(-1,  0));
-    if (t.KeyDown(Key.J)) dispatch(new Event.Move( 0,  1));
-    if (t.KeyDown(Key.K)) dispatch(new Event.Move( 0, -1));
-    if (t.KeyDown(Key.L)) dispatch(new Event.Move( 1,  0));
-    if (t.KeyDown(Key.Z)) dispatch(new Event.Check());
-    if (t.KeyDown(Key.X)) dispatch(new Event.Flag());
-    if (t.KeyDown(Key.S)) dispatch(new Event.NewGame());
-    if (t.KeyDown(Key.Q)) return false;
-    return true;
+  static State Init(Config config) {
+    return new State {
+      random = new Random.State(12),
+      config = config,
+      tick = 0,
+      isPlaying = false,
+      cells = new Lst<Cell>(config.size * config.size).Map(c => new Cell()),
+      x = 0,
+      y = 0,
+    };
+  }
+
+  static Sub<Event> Subs(Terminal t) {
+    return Sub.Many(
+      Sub.Every<Event>(TICK_INTERVAL, () => new Event.Tick()),
+      Sub.KeyDown(t, OnKeyDown)
+    );
+  }
+
+  static Event OnKeyDown(Key k) {
+    switch (k) {
+      case Key.Q: return new Event.Quit();
+      case Key.S: return new Event.NewGame();
+      case Key.H: return new Event.Move(-1,  0);
+      case Key.J: return new Event.Move( 0,  1);
+      case Key.K: return new Event.Move( 0, -1);
+      case Key.L: return new Event.Move( 1,  0);
+      case Key.Z: return new Event.Check();
+      case Key.X: return new Event.Flag();
+    }
+    return null;
   }
 
   static (State, Cmd<Event>) Step(State state, Event evt) {
     switch(evt) {
+      case Event.Quit e: {
+        return (state, Cmd.Quit<Event>());
+      }
       case Event.Tick e: {
         return (state with { tick = state.tick + 1 }, null);
       }

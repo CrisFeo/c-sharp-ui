@@ -58,14 +58,10 @@ public struct Lst<T> : IEquatable<Lst<T>>, IEnumerable<T> {
 
   public override bool Equals(object o) => (o is Lst<T> e) ? Equals(e) : false;
 
-  public IEnumerator<T> GetEnumerator() {
-    for (var i = 0; i < Count; i++) {
-      yield return this[i];
-    }
-  }
+  IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-  IEnumerator IEnumerable.GetEnumerator() {
-    return GetEnumerator();
+  public IEnumerator<T> GetEnumerator() {
+    for (var i = 0; i < Count; i++) yield return this[i];
   }
 
 }

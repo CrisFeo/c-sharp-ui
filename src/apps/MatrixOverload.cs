@@ -30,21 +30,12 @@ public static class MatrixOverload {
   // Public methods
   ////////////////////
 
-  public static void Run(Config config) {
+  public static void Run() {
     App.Terminal(
-      init: new State {
-        random = new Random.State(12),
-        isPlaying = false,
-        deck = Lst<Card>.Empty,
-        grid = Lst<Lst<Card>>.Empty,
-        draw = null,
-        x = 2,
-        y = 2,
-      },
-      input: Input,
+      init: Init,
+      subs: Subs,
       step: Step,
       view: View,
-      subs: default(Sub<Event>),
       width: 60,
       height: 60,
       title: "Matrix Overload"
@@ -65,9 +56,6 @@ public static class MatrixOverload {
   // Records
   ////////////////////
 
-  public record Config {
-  }
-
   record State {
     public Random.State   random    { get; init; }
     public bool           isPlaying { get; init; }
@@ -85,6 +73,7 @@ public static class MatrixOverload {
   }
 
   record Event {
+    public record Quit()             : Event;
     public record NewGame()          : Event;
     public record Move(int x, int y) : Event;
     public record Place()            : Event;
@@ -93,28 +82,49 @@ public static class MatrixOverload {
   // Internal methods
   ////////////////////
 
-  static bool Input(Terminal t, Action<Event> dispatch) {
-    if (t.KeyDown(Key.Q)) return false;
-    if (t.KeyDown(Key.S))     dispatch(new Event.NewGame());
-    if (t.KeyDown(Key.Left))  dispatch(new Event.Move(-1,  0));
-    if (t.KeyDown(Key.Right)) dispatch(new Event.Move( 1,  0));
-    if (t.KeyDown(Key.Down))  dispatch(new Event.Move( 0,  1));
-    if (t.KeyDown(Key.Up))    dispatch(new Event.Move( 0, -1));
-    if (t.KeyDown(Key.H))     dispatch(new Event.Move(-1,  0));
-    if (t.KeyDown(Key.J))     dispatch(new Event.Move( 0,  1));
-    if (t.KeyDown(Key.K))     dispatch(new Event.Move( 0, -1));
-    if (t.KeyDown(Key.L))     dispatch(new Event.Move( 1,  0));
-    if (t.KeyDown(Key.Y))     dispatch(new Event.Move(-1, -1));
-    if (t.KeyDown(Key.U))     dispatch(new Event.Move( 1, -1));
-    if (t.KeyDown(Key.B))     dispatch(new Event.Move(-1,  1));
-    if (t.KeyDown(Key.N))     dispatch(new Event.Move( 1,  1));
-    if (t.KeyDown(Key.Z))     dispatch(new Event.Place());
-    return true;
+  static State Init() {
+    return new State {
+      random = new Random.State(12),
+      isPlaying = false,
+      deck = Lst<Card>.Empty,
+      grid = Lst<Lst<Card>>.Empty,
+      draw = null,
+      x = 2,
+      y = 2,
+    };
+  }
+
+  static Sub<Event> Subs(Terminal t) {
+    return Sub.KeyDown(t, OnKeyDown);
+  }
+
+  static Event OnKeyDown(Key k) {
+    switch (k) {
+      case Key.Q:     return new Event.Quit();
+      case Key.S:     return new Event.NewGame();
+      case Key.Left:  return new Event.Move(-1,  0);
+      case Key.Right: return new Event.Move( 1,  0);
+      case Key.Down:  return new Event.Move( 0,  1);
+      case Key.Up:    return new Event.Move( 0, -1);
+      case Key.H:     return new Event.Move(-1,  0);
+      case Key.J:     return new Event.Move( 0,  1);
+      case Key.K:     return new Event.Move( 0, -1);
+      case Key.L:     return new Event.Move( 1,  0);
+      case Key.Y:     return new Event.Move(-1, -1);
+      case Key.U:     return new Event.Move( 1, -1);
+      case Key.B:     return new Event.Move(-1,  1);
+      case Key.N:     return new Event.Move( 1,  1);
+      case Key.Z:     return new Event.Place();
+    }
+    return null;
   }
 
   static (State, Cmd<Event>) Step(State state, Event evt) {
     var random = state.random;
     switch(evt) {
+      case Event.Quit e: {
+        return (state, Cmd.Quit<Event>());
+      }
       case Event.NewGame e: {
         var deck = ShuffleDeck(ref random);
         var grid = Lst<Lst<Card>>.Empty.ToBuilder();

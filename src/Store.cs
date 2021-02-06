@@ -7,24 +7,29 @@ public class Store<State, Event> : IDisposable {
   // Internal vars
   ////////////////////
 
+  Sub<Event> subs;
   Func<State, Event, (State, Cmd<Event>)> step;
   Action<State> view;
-  Sub<Event> subs;
   BlockingCollection<Event> events;
   Stack<(Event, State)> history;
+
+  // Public properties
+  ////////////////////
+
+  public bool ShouldQuit { get; private set; }
 
   // Constructors
   ////////////////////
 
   public Store(
     State init,
+    Sub<Event> subs,
     Func<State, Event, (State, Cmd<Event>)> step,
-    Action<State> view,
-    Sub<Event> subs
+    Action<State> view
   ) {
+    this.subs = subs;
     this.step = step;
     this.view = view;
-    this.subs = subs;
     events = new BlockingCollection<Event>();
     history = new Stack<(Event, State)>();
     history.Push((default(Event), init));
@@ -43,6 +48,7 @@ public class Store<State, Event> : IDisposable {
   }
 
   public void Dispatch(Event evt) {
+    if (evt == null) return;
     events.Add(evt);
   }
 
@@ -76,9 +82,23 @@ public class Store<State, Event> : IDisposable {
     do {
       (state, cmd) = step(state, evt);
       history.Push((evt, state));
-      cmd?.run(Dispatch);
+      if (cmd != null) {
+        if (cmd.GetType() == typeof(QuitCmd<Event>)) ShouldQuit = true;
+        cmd.run?.Invoke(Dispatch);
+      }
     } while (events.TryTake(out evt));
     if (!state.Equals(previousState)) view(state);
   }
 
 }
+
+public record QuitCmd<E>() : Cmd<E>(default(Action<Action<E>>));
+
+public static partial class Cmd {
+
+  public static Cmd<E> Quit<E>() {
+    return new QuitCmd<E>();
+  }
+
+}
+

@@ -12,8 +12,8 @@ static class Runner {
   ////////////////////
 
   public static void Run() {
-    TestRenderDiff();
-    //TestRenderResponsive();
+    //TestRenderDiff();
+    TestRenderResponsive();
   }
 
   // Internal methods

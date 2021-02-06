@@ -13,20 +13,12 @@ public static class Todo {
   // Public methods
   ////////////////////
 
-  public static void Run(Config config) {
+  public static void Run() {
     App.Widget(
-      init: new State {
-        entries = Lst<Entry>.Empty.AddRange(new Entry[] {
-          new Entry { completed = true, description = "get milk" },
-          new Entry { completed = false, description = "workout (10a)" },
-          new Entry { completed = false, description = "business meeting" },
-        }),
-        selected = 0,
-      },
-      input: Input,
+      init: Init,
+      subs: Subs,
       step: Step,
       view: View,
-      subs: default(Sub<Event>),
       width: 30,
       height: 50,
       title: "Todo List"
@@ -35,8 +27,6 @@ public static class Todo {
 
   // Records
   ////////////////////
-
-  public record Config { }
 
   record State {
     public Lst<Entry> entries  { get; init; }
@@ -49,6 +39,7 @@ public static class Todo {
   }
 
   record Event {
+    public record Quit()      : Event;
     public record Move(int o) : Event;
     public record Toggle()    : Event;
   }
@@ -56,16 +47,36 @@ public static class Todo {
   // Internal methods
   ////////////////////
 
-  static bool Input(Terminal t, Action<Event> dispatch) {
-    if (t.KeyDown(Key.Q))     return false;
-    if (t.KeyDown(Key.J))     dispatch(new Event.Move(1));
-    if (t.KeyDown(Key.K))     dispatch(new Event.Move(-1));
-    if (t.KeyDown(Key.Enter)) dispatch(new Event.Toggle());
-    return true;
+   static State Init() {
+    return new State {
+      entries = Lst<Entry>.Empty.AddRange(new Entry[] {
+        new Entry { completed = true, description = "get milk" },
+        new Entry { completed = false, description = "workout (10a)" },
+        new Entry { completed = false, description = "business meeting" },
+      }),
+      selected = 0,
+    };
+  }
+
+  static Sub<Event> Subs(Terminal t) {
+    return Sub.KeyDown(t, OnKeyDown);
+  }
+
+  static Event OnKeyDown(Key k) {
+    switch (k) {
+      case Key.Q:     return new Event.Quit();
+      case Key.J:     return new Event.Move(1);
+      case Key.K:     return new Event.Move(-1);
+      case Key.Enter: return new Event.Toggle();
+    }
+    return null;
   }
 
   static (State, Cmd<Event>) Step(State state, Event evt) {
     switch(evt) {
+      case Event.Quit e: {
+        return (state, Cmd.Quit<Event>());
+      }
       case Event.Move e: {
         if (state.entries.Count == 0) return (state, null);
         return (state with {
@@ -85,20 +96,46 @@ public static class Todo {
 
   static BaseWidget View(State state) {
     var i = 0;
-    return W.Row(
-      W.FillWidth(null),
+    return Center(
       W.Column(
-        state.entries.Map(e => W.Row(
-          W.Text(state.selected == i++ ? ">" : " "),
-          W.FixedWidth(1, null),
-          W.Text(e.completed ? "[x]" : "[ ]"),
-          W.FixedWidth(1, null),
-          W.Text(e.description)
-        )).ToArray()
-      ),
-      W.FillWidth(null)
+        state.entries.MapArr(e =>
+          TodoEntry(e, state.selected == i++)
+        )
+      )
     );
   }
+
+  static BaseWidget TodoEntry(Entry e, bool selected) =>
+    W.Row(
+      W.Text(selected ? ">" : " "),
+      W.FixedWidth(1, null),
+      W.Text(e.completed ? "[x]" : "[ ]"),
+      W.FixedWidth(1, null),
+      W.Text(e.description)
+    );
+
+  static BaseWidget Center(BaseWidget child) =>
+    CenterHorizontal(
+      CenterVertical(
+        child
+      )
+    );
+
+  static BaseWidget CenterHorizontal(BaseWidget child) =>
+    W.Row(
+      W.FillWidth(null),
+      child,
+      W.FillWidth(null)
+    );
+
+  static BaseWidget CenterVertical(BaseWidget child) =>
+    W.Column(
+      W.FillHeight(null),
+      child,
+      W.FillHeight(null)
+    );
+
+  static U[] MapArr<T, U>(this Lst<T> l, Func<T, U> fn) => l.Map(fn).ToArray();
 
   static int Clamp(int min, int max, int val) {
     if (val < min) return min;
