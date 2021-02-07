@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Rendering;
 using Layout;
 
+using W = Layout.Widgets.Library;
+
 public static partial class App {
 
   public static void Widget<State, Event>(
@@ -22,7 +24,11 @@ public static partial class App {
       step,
       (t, s) => {
         prev = next;
-        next = view(s);
+        next = W.BackgroundColor(Colors.Black,
+          W.ForegroundColor(Colors.White,
+            view(s)
+          )
+        );
         var (width, height) = t.Size;
         next.Layout(new Constraint {
           xMin = 0,

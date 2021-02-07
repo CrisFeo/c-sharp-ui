@@ -14,6 +14,7 @@ public class FixedHeight : SingleChildWidget {
   }
 
   public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
     var h = LayoutUtils.Clamp(c.yMin, c.yMax, height);
     if (child == null) {
       Geometry = new Geometry {
@@ -33,7 +34,7 @@ public class FixedHeight : SingleChildWidget {
 }
 
 public static partial class Library {
-  public static FixedHeight FixedHeight(int height, BaseWidget child) {
+  public static FixedHeight FixedHeight(int height, BaseWidget child = null) {
     return new FixedHeight(height, child);
   }
 }

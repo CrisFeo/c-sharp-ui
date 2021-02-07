@@ -14,6 +14,7 @@ public class Text : BaseWidget {
   }
 
   public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
     var maxLength = 0;
     foreach (var l in lines) {
       if (l.Length > maxLength) maxLength = l.Length;
@@ -29,7 +30,7 @@ public class Text : BaseWidget {
 
   public override void Render(Terminal t, int x, int y) {
     for (var i = 0; i < lines.Length; i++) {
-      t.Set(x, y + i, lines[i]);
+      t.Set(x, y + i, lines[i], Foreground, Background);
     }
   }
 

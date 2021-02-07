@@ -11,6 +11,7 @@ public class FillHeight : SingleChildWidget {
   }
 
   public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
     if (child == null) {
       Geometry = new Geometry {
         w = c.xMin,
@@ -28,7 +29,7 @@ public class FillHeight : SingleChildWidget {
 }
 
 public static partial class Library {
-  public static FillHeight FillHeight(BaseWidget child) {
+  public static FillHeight FillHeight(BaseWidget child = null) {
     return new FillHeight(child);
   }
 }

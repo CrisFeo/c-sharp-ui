@@ -4,6 +4,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Rendering;
+using Layout;
+
+using W = Layout.Widgets.Library;
 
 public static class MatrixOverload {
 
@@ -31,7 +34,7 @@ public static class MatrixOverload {
   ////////////////////
 
   public static void Run() {
-    App.Terminal(
+    App.Widget(
       init: Init,
       subs: Subs,
       step: Step,
@@ -57,13 +60,13 @@ public static class MatrixOverload {
   ////////////////////
 
   record State {
-    public Random.State   random    { get; init; }
-    public bool           isPlaying { get; init; }
-    public Lst<Card>      deck      { get; init; }
-    public Lst<Lst<Card>> grid      { get; init; }
-    public Card           draw      { get; init; }
-    public int            x         { get; init; }
-    public int            y         { get; init; }
+    public Random.State    random    { get; init; }
+    public bool            isPlaying { get; init; }
+    public Lst<Card>       deck      { get; init; }
+    public Lst<Lst<Card>?> grid      { get; init; }
+    public Card            draw      { get; init; }
+    public int             x         { get; init; }
+    public int             y         { get; init; }
   }
 
   record Card {
@@ -87,7 +90,7 @@ public static class MatrixOverload {
       random = new Random.State(12),
       isPlaying = false,
       deck = Lst<Card>.Empty,
-      grid = Lst<Lst<Card>>.Empty,
+      grid = Lst<Lst<Card>?>.Empty,
       draw = null,
       x = 2,
       y = 2,
@@ -127,8 +130,14 @@ public static class MatrixOverload {
       }
       case Event.NewGame e: {
         var deck = ShuffleDeck(ref random);
-        var grid = Lst<Lst<Card>>.Empty.ToBuilder();
-        for (var i = 0; i < 25; i++) grid.Add(Lst<Card>.Empty);
+        var grid = Lst<Lst<Card>?>.Empty.ToBuilder();
+        for (var i = 0; i < 25; i++) {
+          if (i == 0 || i == 4 || i == 5 * 4 || i == 5 * 4 + 4) {
+            grid.Add(null);
+          } else {
+            grid.Add(Lst<Card>.Empty);
+          }
+        }
         var royals = new List<Card>();
         for (var y = 0; y < 5; y++) {
           for (var x = 0; x < 5; x++) {
@@ -152,7 +161,7 @@ public static class MatrixOverload {
           random = random,
           isPlaying = true,
           deck = Lst<Card>.Empty.AddRange(deck),
-          grid = Lst<Lst<Card>>.Empty.AddRange(grid),
+          grid = Lst<Lst<Card>?>.Empty.AddRange(grid),
           draw = draw,
           x = 2,
           y = 2,
@@ -176,7 +185,7 @@ public static class MatrixOverload {
         // Aces reset the stack
         if (state.draw.rank == 1) {
           var index = state.y * 5 + state.x;
-          var stack = grid[index];
+          var stack = grid[index].Value;
           for (var i = 0; i < stack.Count; i++) {
             deck.Insert(0, stack[i]);
           }
@@ -210,7 +219,7 @@ public static class MatrixOverload {
         var draw = DrawNonRoyalCard(deck, grid);
         return (state with {
           deck = new Lst<Card>(deck),
-          grid = new Lst<Lst<Card>>(grid),
+          grid = new Lst<Lst<Card>?>(grid),
           draw = draw,
           x = 2,
           y = 2,
@@ -220,43 +229,68 @@ public static class MatrixOverload {
     return (state, null);
   }
 
-  static void View(Terminal t, State state) {
-    t.Clear();
-    if (state.isPlaying) {
-      for (var y = 0; y < 5; y++) {
-        for (var x = 0; x < 5; x++) {
-          if ((x == 0 || x == 4) && (y == 0 || y == 4)) continue;
-          var c = state.grid[y * 5 + x].Last;
-          if (c != null) {
-            RenderCard(t, x * 4, y * 4, c);
-          } else {
-            Drawing.Box(t, x * 4, y * 4, 3, 3, Colors.White, Colors.Black);
-          }
-        }
-      }
-      if (state.draw != null) {
-        RenderCard(t, 4 * 4, 5 * 4, state.draw);
-        Drawing.Box(t, state.x * 4 - 1, state.y * 4 - 1, 5, 5, Colors.Yellow, Colors.Black);
-        var stack = state.grid[state.y * 5 + state.x];
-        for (var i = 0; i < stack.Count; i++) {
-          RenderCard(t, 5 * 4, i * 4 + 1,stack[stack.Count - 1 - i]);
-        }
-      }
-    } else {
-      t.Set(0, 0, "press 's' to start a new game");
-    }
-    t.Render();
+  static BaseWidget View(State state) {
+    if (!state.isPlaying) return Center(
+      W.Text("press 's' to start a new game")
+    );
+    var selectedIndex = state.y * 5 + state.x;
+    var stack = state.grid[selectedIndex] ?? Lst<Card>.Empty;
+    var index = 0;
+    var cells = state.grid.Map(s => {
+      var borderColor = index == selectedIndex ? Colors.Yellow : Colors.Black;
+      index++;
+      return W.ForegroundColor(borderColor,
+        W.Border(
+          CardStack(s)
+        )
+      );
+    }).ToArray();
+    return Center(
+      W.Row(
+        Grid(5, cells),
+        W.FixedWidth(2),
+          W.Column(
+            W.Border(
+              PlayingCard(state.draw)
+            ),
+            W.Border(
+              stack.Count == 0 ? Fixed(3, 3) : W.Column(true,
+                stack.Map(PlayingCard).ToArray()
+              )
+            )
+          )
+      )
+    );
   }
 
-  static void RenderCard(Terminal t, int x, int y, Card c) {
+  static BaseWidget CardStack(Lst<Card>? s) {
+    if (s == null) return Fixed(3, 3);
+    var c = s.Value.Last;
+    return PlayingCard(c);
+  }
+
+  static BaseWidget PlayingCard(Card c) {
+    if (c == null) return Fixed(3, 3,
+      W.ForegroundColor(Colors.White,
+        W.Border(
+          Fill()
+        )
+      )
+    );
     var fg = c.suit == Suit.Hearts || c.suit == Suit.Diamonds ? Colors.Red : Colors.Black;
-    var bg = c.disabled ? Colors.Gray : Colors.White;
-    var suitChar = default(char);
     switch (c.suit) {
-      case Suit.Hearts:   { suitChar = (char)3; break; }
-      case Suit.Diamonds: { suitChar = (char)4; break; }
-      case Suit.Clubs:    { suitChar = (char)5; break; }
-      case Suit.Spades:   { suitChar = (char)6; break; }
+      case Suit.Hearts:   fg = Colors.Red;   break;
+      case Suit.Clubs:    fg = Colors.Black; break;
+      case Suit.Diamonds: fg = Colors.Red;   break;
+      case Suit.Spades:   fg = Colors.Black; break;
+    }
+    var bg = c.disabled ? Colors.Gray : Colors.White;
+    var suitStr = default(string);
+    switch (c.suit) {
+      case Suit.Hearts:   { suitStr += (char)3; break; }
+      case Suit.Diamonds: { suitStr += (char)4; break; }
+      case Suit.Clubs:    { suitStr += (char)5; break; }
+      case Suit.Spades:   { suitStr += (char)6; break; }
     }
     var rankStr = default(string);
     switch (c.rank) {
@@ -266,10 +300,61 @@ public static class MatrixOverload {
       case 13: { rankStr = "K";               break; }
       default: { rankStr = c.rank.ToString(); break; }
     }
-    t.Set(x, y + 0, rankStr.PadRight(3), fg, bg);
-    t.Set(x, y + 1, $" {suitChar} ",     fg, bg);
-    t.Set(x, y + 2, rankStr.PadLeft(3),  fg, bg);
+    return Fixed(3, 3,
+      W.ForegroundColor(fg,
+        W.BackgroundColor(bg,
+          W.Pane(
+            W.Column(
+              W.Row(
+                W.Text(rankStr),
+                W.FillWidth()
+              ),
+              W.Row(
+                W.FillWidth(),
+                W.Text(suitStr),
+                W.FillWidth()
+              ),
+              W.Row(
+                W.FillWidth(),
+                W.Text(rankStr)
+              )
+            )
+          )
+        )
+      )
+    );
   }
+
+  static BaseWidget Grid(int columns, params BaseWidget[] cells) {
+    var rows = new BaseWidget[(int)(cells.Length / columns)];
+    for (var y = 0; y < rows.Length; y++) {
+      var rowSize = cells.Length - y;
+      if (rowSize > columns) rowSize = columns;
+      var row = new BaseWidget[rowSize];
+      for (var x = 0; x < rowSize; x++) {
+        row[x] = cells[columns * y + x];
+      }
+      rows[y] = W.Row(row);
+    }
+    return W.Column(rows);
+  }
+
+  static BaseWidget Fixed(int w, int h, BaseWidget child = null) =>
+    W.FixedWidth(w, W.FixedHeight(h, child));
+
+  static BaseWidget Fill(BaseWidget child = null) =>
+    W.FillWidth(W.FillHeight(child));
+
+  static BaseWidget Center(BaseWidget child = null) =>
+    W.Row(
+      W.FillWidth(),
+      W.Column(
+        W.FillHeight(),
+        child,
+        W.FillHeight()
+      ),
+      W.FillWidth()
+    );
 
   static ImmutableList<Card>.Builder ShuffleDeck(ref Random.State random) {
     var deck = ImmutableList<Card>.Empty.ToBuilder();
@@ -291,7 +376,7 @@ public static class MatrixOverload {
 
   static Card DrawNonRoyalCard(
     ImmutableList<Card>.Builder deck,
-    ImmutableList<Lst<Card>>.Builder grid
+    ImmutableList<Lst<Card>?>.Builder grid
   ) {
     var card = default(Card);
     while (deck.Count != 0) {
@@ -305,26 +390,27 @@ public static class MatrixOverload {
     return null;
   }
 
-  static void PushCard(ImmutableList<Lst<Card>>.Builder grid, int x, int y, Card card) {
+  static void PushCard(ImmutableList<Lst<Card>?>.Builder grid, int x, int y, Card card) {
     var index = y * 5 + x;
     PushCard(grid, index, card);
   }
 
-  static void PushCard(ImmutableList<Lst<Card>>.Builder grid, int index, Card card) {
-    grid[index] = grid[index].Add(card);
+  static void PushCard(ImmutableList<Lst<Card>?>.Builder grid, int index, Card card) {
+    if (index >= grid.Count) return;
+    grid[index] = grid[index]?.Add(card) ?? Lst<Card>.Empty.Add(card);
   }
 
-  static Card TopCard(ImmutableList<Lst<Card>>.Builder grid, int x, int y) {
+  static Card TopCard(ImmutableList<Lst<Card>?>.Builder grid, int x, int y) {
     var index = y * 5 + x;
     return TopCard(grid, index);
   }
 
-  static Card TopCard(ImmutableList<Lst<Card>>.Builder grid, int index) {
-    if (grid[index].Count == 0) return null;
-    return grid[index].Last;
+  static Card TopCard(ImmutableList<Lst<Card>?>.Builder grid, int index) {
+    if (index >= grid.Count) return null;
+    return grid[index]?.Last ?? null;
   }
 
-  static void PlaceRoyal(ImmutableList<Lst<Card>>.Builder grid, Card royal) {
+  static void PlaceRoyal(ImmutableList<Lst<Card>?>.Builder grid, Card royal) {
     var bestIndex = -1;
     foreach (var (royalIndex, neighborIndex) in ROYAL_NEIGHBORS) {
       if (TopCard(grid, royalIndex) != null) continue;
@@ -376,11 +462,12 @@ public static class MatrixOverload {
     return strength >= royal.rank;
   }
 
-  static void DisableCard(ImmutableList<Lst<Card>>.Builder grid, int x, int y) {
+  static void DisableCard(ImmutableList<Lst<Card>?>.Builder grid, int x, int y) {
     var index = y * 5 + x;
     var card = TopCard(grid, index);
     if (card == null) return;
-    grid[index] = grid[index].Set(grid[index].Count - 1, card with {
+    var stack = grid[index].Value;
+    grid[index] = stack.Set(stack.Count - 1, card with {
       disabled = true,
     });
   }

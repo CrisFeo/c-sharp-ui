@@ -6,11 +6,16 @@ namespace Layout.Widgets {
 
 public class Row : MultiChildWidget {
 
-  public Row(BaseWidget[] children) {
+  bool reversed;
+
+  public Row(bool reversed, BaseWidget[] children) {
+    StateHash = (reversed).GetHashCode();
+    this.reversed = reversed;
     this.children = new List<BaseWidget>(children);
   }
 
   public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
     if (children.Count == 0) {
       Geometry = new Geometry {
         w = c.xMin,
@@ -53,7 +58,9 @@ public class Row : MultiChildWidget {
       var height = 0;
       for(var i = 0; i < children.Count; i++) {
         if (childrenGeometry[i].h > height) height = childrenGeometry[i].h;
-        children[i].Position = (x, 0);
+        var cx = x;
+        if (reversed) cx = width - x - childrenGeometry[i].w;
+        children[i].Position = (cx, 0);
         x += childrenGeometry[i].w;
       }
       Geometry = new Geometry {
@@ -68,7 +75,10 @@ public class Row : MultiChildWidget {
 
   public static partial class Library {
     public static Row Row(params BaseWidget[] children) {
-      return new Row(children);
+      return new Row(false, children);
+    }
+    public static Row Row(bool reversed, params BaseWidget[] children) {
+      return new Row(reversed, children);
     }
   }
 }

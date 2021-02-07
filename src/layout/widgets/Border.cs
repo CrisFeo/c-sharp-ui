@@ -11,6 +11,7 @@ public class Border : SingleChildWidget {
   }
 
   public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
     if (child == null) {
       Geometry = new Geometry {
         w = c.xMin,
@@ -31,7 +32,7 @@ public class Border : SingleChildWidget {
   }
 
   public override void Render(Terminal t, int x, int y) {
-    Drawing.Box(t, x, y, Geometry.w, Geometry.h, Colors.White, Colors.Black);
+    Drawing.Box(t, x, y, Geometry.w, Geometry.h, Foreground, Background);
   }
 
 }

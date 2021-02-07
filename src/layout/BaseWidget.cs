@@ -13,16 +13,30 @@ public abstract class BaseWidget {
 
   public (int, int) Position { get; set; }
 
+  public Color Foreground { get; set; }
+
+  public Color Background { get; set; }
+
   public int StateHash { get; protected set; }
 
   // Public methods
   ////////////////////
 
-  public abstract Geometry Layout(Constraint c);
-
   public abstract IEnumerable<BaseWidget> Visit();
 
+  public abstract Geometry Layout(Constraint c);
+
   public virtual void Render(Terminal t, int x, int y) { }
+
+  // Internal methods
+  ////////////////////
+
+  protected void PassInheritedProperties() {
+    foreach (var c in Visit()) {
+      c.Foreground = Foreground;
+      c.Background = Background;
+    }
+  }
 
 }
 

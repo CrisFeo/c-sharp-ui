@@ -22,16 +22,22 @@ static class RenderLayout {
   public static void Diff(Terminal t, BaseWidget prev, BaseWidget next, int x = 0, int y = 0) {
     var changed = false;
     if (prev.GetType() != next.GetType()) {
-      Console.WriteLine($"changed widget   {prev.GetType().Name} => {next.GetType().Name}");
+      Console.WriteLine($"changed widget     {prev.GetType().Name} => {next.GetType().Name}");
       changed = true;
     } else if (prev.Position != next.Position) {
-      Console.WriteLine($"changed position {next.GetType().Name}");
+      Console.WriteLine($"changed position   {next.GetType().Name}");
       changed = true;
     } else if (prev.Geometry != next.Geometry) {
-      Console.WriteLine($"changed geometry {next.GetType().Name}");
+      Console.WriteLine($"changed geometry   {next.GetType().Name}");
+      changed = true;
+    } else if (prev.Foreground != next.Foreground) {
+      Console.WriteLine($"changed foreground {next.GetType().Name}");
+      changed = true;
+    } else if (prev.Background != next.Background) {
+      Console.WriteLine($"changed background {next.GetType().Name}");
       changed = true;
     } else if (prev.StateHash != next.StateHash) {
-      Console.WriteLine($"changed state {next.GetType().Name}");
+      Console.WriteLine($"changed state      {next.GetType().Name}");
       changed = true;
     }
     if (changed) {
@@ -60,15 +66,16 @@ static class RenderLayout {
 
   static void Clear(Terminal t, BaseWidget w, int x, int y) {
     var g = w.Geometry;
-    if (g.w == 0 || g.h == 0) return;
     var (xw, yw) = w.Position;
-    x += xw;
-    y += yw;
-    for (var yi = 0; yi < g.h; yi++) {
-      for (var xi = 0; xi < g.w; xi++) {
-        t.Set(x + xi, y + yi, ' ');
-      }
-    }
+    Drawing.Fill(
+      t,
+      x + xw,
+      y + yw,
+      g.w,
+      g.h,
+      w.Foreground,
+      w.Background
+    );
   }
 
 

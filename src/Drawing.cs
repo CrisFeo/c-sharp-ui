@@ -25,4 +25,13 @@ public static class Drawing {
     }
   }
 
+  public static void Fill(Terminal t, int x, int y, int w, int h, Color fg, Color bg) {
+    if (w == 0 || h == 0) return;
+    for (var yi = 0; yi < h; yi++) {
+      for (var xi = 0; xi < w; xi++) {
+        t.Set(x + xi, y + yi, ' ', fg, bg);
+      }
+    }
+  }
+
 }

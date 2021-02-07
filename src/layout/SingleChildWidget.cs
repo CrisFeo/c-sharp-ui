@@ -13,6 +13,20 @@ public abstract class SingleChildWidget : BaseWidget {
     yield return child;
   }
 
+  public override Geometry Layout(Constraint c) {
+    PassInheritedProperties();
+    if (child == null) {
+      Geometry = new Geometry {
+        w = c.xMin,
+        h = c.yMin,
+      };
+    } else {
+      child.Position = (0, 0);
+      Geometry = child.Layout(c);
+    }
+    return Geometry;
+  }
+
 }
 
 }
